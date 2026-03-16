@@ -1,12 +1,12 @@
 # Marketing MCP Server
 
-A centralized marketing data platform built on the [Model Context Protocol](https://modelcontextprotocol.io/). Connect Claude (or any MCP client) to Google Ads, Search Console, GA4, Meta, YouTube, Reddit, Google Trends, PageSpeed, and Google Business Profile — all through a single server.
+A centralized marketing data platform built on the [Model Context Protocol](https://modelcontextprotocol.io/). Connect Claude (or any MCP client) to Google Ads, Search Console, GA4, Meta, YouTube, Reddit, Google Trends, PageSpeed, Google Business Profile, and Google Drive — all through a single server.
 
 ---
 
 ## Why This Exists
 
-Marketing teams juggle dozens of platform dashboards. This server consolidates **9 marketing APIs** into structured MCP tools that any AI assistant can call directly. Ask Claude to pull your keyword rankings, audit page speed, research trending topics, or analyze ad audiences — without switching tabs or writing API code.
+Marketing teams juggle dozens of platform dashboards. This server consolidates **10 marketing APIs** into **14 structured MCP tools** that any AI assistant can call directly. Ask Claude to pull your keyword rankings, audit page speed, research trending topics, analyze ad audiences, or save docs straight to Google Drive — without switching tabs or writing API code.
 
 ---
 
@@ -40,6 +40,16 @@ Marketing teams juggle dozens of platform dashboards. This server consolidates *
 | Tool | What It Does | Auth |
 |------|-------------|------|
 | **`gbp_insights`** | Google Business Profile — reviews, ratings, and performance metrics for a location | Google Service Account |
+
+### Google Drive
+
+| Tool | What It Does | Auth |
+|------|-------------|------|
+| **`gdrive_list_files`** | List files in Drive — name, type, modified date, and link, with optional folder and MIME type filters | Google Service Account |
+| **`gdrive_search`** | Search Drive by file name or full-text content across all files | Google Service Account |
+| **`gdrive_read_file`** | Read file content — exports Google Docs/Sheets/Slides to plain text (or other formats) | Google Service Account |
+| **`gdrive_create_doc`** | Create a new Google Doc (or Sheet/Slide) with optional initial content in any folder | Google Service Account |
+| **`gdrive_update_doc`** | Update an existing file's content or title | Google Service Account |
 
 ---
 
@@ -117,7 +127,7 @@ claude mcp add marketing -- python -m marketing_mcp
 | `GOOGLE_ADS_REFRESH_TOKEN` | Google Ads | OAuth consent flow |
 | `GOOGLE_ADS_DEVELOPER_TOKEN` | Google Ads | Google Ads Manager account |
 | `GOOGLE_ADS_CUSTOMER_ID` | Google Ads | Your account ID (no dashes) |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | GSC, GA4, GBP | [Google Cloud Console](https://console.cloud.google.com/iam-admin/serviceaccounts) — file path or JSON string |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | GSC, GA4, GBP, Drive | [Google Cloud Console](https://console.cloud.google.com/iam-admin/serviceaccounts) — file path or JSON string |
 | `GA4_PROPERTY_ID` | GA4 (optional) | GA4 Admin > Property Settings |
 | `META_ACCESS_TOKEN` | Meta | [Meta Business Suite](https://business.facebook.com/settings) |
 | `YOUTUBE_API_KEY` | YouTube | [Google Cloud Console](https://console.cloud.google.com/apis/credentials) — enable YouTube Data API v3 |
@@ -127,6 +137,7 @@ claude mcp add marketing -- python -m marketing_mcp
 | `PAGESPEED_API_KEY` | PageSpeed (optional) | Google Cloud Console — optional, increases quota |
 | `GBP_ACCOUNT_ID` | GBP | Google Business Profile Manager |
 | `GBP_LOCATION_ID` | GBP | Google Business Profile Manager |
+| `GDRIVE_FOLDER_ID` | Drive (optional) | Default folder ID from Google Drive URL |
 
 > You don't need all credentials. Each tool checks its own requirements and returns a helpful message if something is missing.
 
@@ -260,6 +271,92 @@ gbp_insights(account_id="123", location_id="456", days=28)
 
 ---
 
+### `gdrive_list_files`
+
+List files in Google Drive with optional folder and type filters.
+
+```
+gdrive_list_files(folder_id="abc123", page_size=20, mime_type="application/vnd.google-apps.document")
+```
+
+**Parameters:**
+- `folder_id` — restrict to a specific folder (optional)
+- `page_size` — max files to return (default 20)
+- `mime_type` — filter by MIME type (optional)
+
+**Returns:** File name, type, last modified date, ID, and direct link.
+
+---
+
+### `gdrive_search`
+
+Search Google Drive by file name or full-text content.
+
+```
+gdrive_search(query="marketing plan", full_text="Q4 budget", limit=10)
+```
+
+**Parameters:**
+- `query` — search by file name
+- `full_text` — search within file content
+- `mime_type` — filter by MIME type (optional)
+- `limit` — max results (default 20)
+
+**Returns:** Matching files with name, type, modified date, ID, and link.
+
+---
+
+### `gdrive_read_file`
+
+Read the content of any Google Drive file. Automatically exports Google Workspace files (Docs, Sheets, Slides) to plain text.
+
+```
+gdrive_read_file(file_id="abc123", export_format="text/plain")
+```
+
+**Parameters:**
+- `file_id` — the Drive file ID
+- `export_format` — MIME type for export (default `"text/plain"`)
+
+**Returns:** The file's text content with a title header.
+
+---
+
+### `gdrive_create_doc`
+
+Create a new file in Google Drive. Defaults to a Google Doc.
+
+```
+gdrive_create_doc(title="Campaign Brief", content="# Q4 Campaign\n\nObjectives...", folder_id="abc123")
+```
+
+**Parameters:**
+- `title` — document title
+- `content` — initial text content (optional)
+- `folder_id` — destination folder (optional)
+- `mime_type` — `"application/vnd.google-apps.document"` (default), `"application/vnd.google-apps.spreadsheet"`, etc.
+
+**Returns:** Created file name, ID, and direct link.
+
+---
+
+### `gdrive_update_doc`
+
+Update an existing file's content or title.
+
+```
+gdrive_update_doc(file_id="abc123", content="Updated content here", new_title="Campaign Brief v2")
+```
+
+**Parameters:**
+- `file_id` — the Drive file ID
+- `content` — new file content (optional)
+- `new_title` — rename the file (optional)
+
+**Returns:** Updated file name, ID, modified timestamp, and link.
+
+---
+
 ## Project Structure
 
 ```
@@ -267,7 +364,7 @@ MCP-Marketing/
 ├── src/marketing_mcp/
 │   ├── server.py                  # FastMCP server + tool registration
 │   ├── __main__.py                # CLI entry point
-│   ├── clients/                   # Tier 1: API integrations (9 tools)
+│   ├── clients/                   # Tier 1: API integrations (14 tools)
 │   │   ├── pagespeed.py           #   PageSpeed Insights
 │   │   ├── google_ads.py          #   Google Ads Keyword Planner
 │   │   ├── search_console.py      #   Google Search Console
@@ -276,7 +373,8 @@ MCP-Marketing/
 │   │   ├── google_trends.py       #   Google Trends (pytrends)
 │   │   ├── youtube.py             #   YouTube Data API v3
 │   │   ├── reddit.py              #   Reddit (PRAW)
-│   │   └── google_business.py     #   Google Business Profile
+│   │   ├── google_business.py     #   Google Business Profile
+│   │   └── google_drive.py        #   Google Drive (list, search, read, create, update)
 │   ├── workflows/                 # Tier 2: multi-API orchestration (planned)
 │   ├── agents/                    # Tier 3: AI agent tools (planned)
 │   └── utils/

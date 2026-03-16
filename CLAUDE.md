@@ -36,7 +36,7 @@
 
 | Tier | Purpose | Status |
 |------|---------|--------|
-| **Tier 1 — Base Tools** | Single-API integrations (9 tools) | Built |
+| **Tier 1 — Base Tools** | Single-API integrations (14 tools) | Built |
 | **Tier 2 — Workflows** | Multi-API orchestration (content gap analysis, cross-channel mapping) | Planned |
 | **Tier 3 — AI Agents** | Claude SDK inner calls (content briefs, intent classification) | Planned |
 
@@ -90,6 +90,11 @@ Tests live in `tests/test_clients/` with mocked API responses:
 | `youtube_topic_research` | `clients/youtube.py` | YouTube Data v3 | API Key |
 | `reddit_topic_research` | `clients/reddit.py` | Reddit/PRAW | OAuth |
 | `gbp_insights` | `clients/google_business.py` | Business Profile | Service Account |
+| `gdrive_list_files` | `clients/google_drive.py` | Google Drive v3 | Service Account |
+| `gdrive_search` | `clients/google_drive.py` | Google Drive v3 | Service Account |
+| `gdrive_read_file` | `clients/google_drive.py` | Google Drive v3 | Service Account |
+| `gdrive_create_doc` | `clients/google_drive.py` | Google Drive v3 | Service Account |
+| `gdrive_update_doc` | `clients/google_drive.py` | Google Drive v3 | Service Account |
 
 ## Commands
 

@@ -57,6 +57,10 @@ CREDENTIAL_CONFIG: dict[str, tuple[list[str], list[str]]] = {
         ["GOOGLE_SERVICE_ACCOUNT_JSON"],
         ["GBP_ACCOUNT_ID", "GBP_LOCATION_ID"],
     ),
+    "google_drive": (
+        ["GOOGLE_SERVICE_ACCOUNT_JSON"],
+        ["GDRIVE_FOLDER_ID"],
+    ),
 }
 
 

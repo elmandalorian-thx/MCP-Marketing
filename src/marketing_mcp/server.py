@@ -21,6 +21,7 @@ import marketing_mcp.clients.google_trends  # noqa: E402, F401
 import marketing_mcp.clients.youtube  # noqa: E402, F401
 import marketing_mcp.clients.reddit  # noqa: E402, F401
 import marketing_mcp.clients.google_business  # noqa: E402, F401
+import marketing_mcp.clients.google_drive  # noqa: E402, F401
 
 
 def main() -> None:
