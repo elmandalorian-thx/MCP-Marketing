@@ -66,11 +66,19 @@ pip install -e .[dev]
 
 ### 2. Configure Credentials
 
+**Option A: Setup Wizard (recommended)**
+```bash
+marketing-mcp setup
+```
+Interactive CLI that walks you through each integration, prompts for API keys, and writes your `.env` file.
+
+**Option B: Manual**
 ```bash
 cp .env.example .env
+# Edit .env with your API keys
 ```
 
-Edit `.env` with your API keys. Only configure the APIs you need — tools gracefully report which credentials are missing.
+Only configure the APIs you need — tools gracefully report which credentials are missing.
 
 ### 3. Run the Server
 
@@ -118,6 +126,44 @@ claude mcp add marketing -- python -m marketing_mcp
 
 ---
 
+## Admin Dashboard
+
+A built-in web UI for managing credentials and monitoring tool status.
+
+### Launch Standalone
+
+```bash
+marketing-mcp admin
+# Dashboard at http://127.0.0.1:8001/admin
+```
+
+### In HTTP Mode
+
+When running with `--transport streamable-http`, the dashboard is automatically available at `/admin` on the same port:
+
+```bash
+marketing-mcp --transport streamable-http --port 8000
+# Dashboard at http://localhost:8000/admin
+```
+
+### Features
+
+- **Integration cards** — See which APIs are connected, partially configured, or missing
+- **Configure credentials** — Enter API keys through the web form (stored in `.env`)
+- **Test connections** — Verify each integration works with a single click
+- **Tools overview** — See all 14 tools and their availability status
+- **Health endpoint** — `/admin/health` returns uptime, tool count, and integration status
+
+### Security
+
+Set `ADMIN_TOKEN` in your `.env` to require Bearer token auth on admin routes:
+
+```bash
+ADMIN_TOKEN=your-secret-token
+```
+
+---
+
 ## Credential Reference
 
 | Variable | Required By | How to Get |
@@ -138,6 +184,7 @@ claude mcp add marketing -- python -m marketing_mcp
 | `GBP_ACCOUNT_ID` | GBP | Google Business Profile Manager |
 | `GBP_LOCATION_ID` | GBP | Google Business Profile Manager |
 | `GDRIVE_FOLDER_ID` | Drive (optional) | Default folder ID from Google Drive URL |
+| `ADMIN_TOKEN` | Admin dashboard (optional) | Any secret string — protects `/admin` routes |
 
 > You don't need all credentials. Each tool checks its own requirements and returns a helpful message if something is missing.
 
@@ -375,6 +422,10 @@ MCP-Marketing/
 │   │   ├── reddit.py              #   Reddit (PRAW)
 │   │   ├── google_business.py     #   Google Business Profile
 │   │   └── google_drive.py        #   Google Drive (list, search, read, create, update)
+│   ├── admin/                     # Admin dashboard (web UI + API routes)
+│   │   ├── routes.py              #   Starlette HTTP handlers
+│   │   └── templates.py           #   Single-page HTML dashboard
+│   ├── cli_setup.py               # Interactive CLI setup wizard
 │   ├── workflows/                 # Tier 2: multi-API orchestration (planned)
 │   ├── agents/                    # Tier 3: AI agent tools (planned)
 │   └── utils/

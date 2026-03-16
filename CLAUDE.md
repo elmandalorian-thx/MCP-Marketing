@@ -66,7 +66,7 @@ def tool_name(param: str, format: str = "markdown") -> str:
 ```
 
 ### Shared Utilities (always reuse these)
-- **`utils/auth.py`** — `get_credential(name)`, `validate_credentials()`, `get_google_service_credentials(scopes)`, `get_google_ads_client()`, `CREDENTIAL_CONFIG`
+- **`utils/auth.py`** — `get_credential(name)`, `validate_credentials()`, `get_credential_status()`, `update_env_file()`, `get_google_service_credentials(scopes)`, `get_google_ads_client()`, `CREDENTIAL_CONFIG`, `INTEGRATION_LABELS`
 - **`utils/cache.py`** — `TTLCache` (thread-safe), `KEYWORD_TTL` (1hr), `AUDIENCE_TTL` (24hr)
 - **`utils/formatting.py`** — `format_response(data, headers, response_format)` — markdown tables or JSON
 - **`utils/errors.py`** — `handle_api_error(error, api_name)` — sanitized user-friendly messages
@@ -96,13 +96,22 @@ Tests live in `tests/test_clients/` with mocked API responses:
 | `gdrive_create_doc` | `clients/google_drive.py` | Google Drive v3 | Service Account |
 | `gdrive_update_doc` | `clients/google_drive.py` | Google Drive v3 | Service Account |
 
+### Admin Dashboard & CLI Setup
+- **`cli_setup.py`** — Interactive CLI wizard (`marketing-mcp setup`) for configuring credentials
+- **`admin/routes.py`** — Starlette HTTP routes registered via `@mcp.custom_route()` for the web dashboard
+- **`admin/templates.py`** — Single-page HTML dashboard (vanilla CSS/JS, no build step)
+- Dashboard available at `/admin` in HTTP mode, or standalone via `marketing-mcp admin`
+- Optional `ADMIN_TOKEN` env var protects admin routes with Bearer auth
+
 ## Commands
 
 ```bash
 pip install -e .[dev]             # Install with dev deps
 python -m marketing_mcp           # Run server (stdio)
 marketing-mcp --transport streamable-http  # Run server (HTTP)
-python3 -m pytest tests/ -v       # Run tests (51 tests)
+marketing-mcp setup              # Interactive credential setup wizard
+marketing-mcp admin              # Standalone admin dashboard (localhost:8001)
+python3 -m pytest tests/ -v       # Run tests (82 tests)
 ruff check src/ tests/            # Lint
 docker build -t marketing-mcp .   # Build container
 ```

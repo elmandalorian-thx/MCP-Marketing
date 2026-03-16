@@ -23,10 +23,18 @@ import marketing_mcp.clients.reddit  # noqa: E402, F401
 import marketing_mcp.clients.google_business  # noqa: E402, F401
 import marketing_mcp.clients.google_drive  # noqa: E402, F401
 
+# Register admin dashboard routes (available in HTTP mode)
+from marketing_mcp.admin.routes import register_admin_routes  # noqa: E402
+
+register_admin_routes(mcp)
+
 
 def main() -> None:
     """Run the Marketing MCP server."""
     parser = argparse.ArgumentParser(description="Marketing MCP Server")
+    subparsers = parser.add_subparsers(dest="command")
+
+    # Default: run the MCP server
     parser.add_argument(
         "--transport",
         choices=["stdio", "streamable-http"],
@@ -44,9 +52,45 @@ def main() -> None:
         default=8000,
         help="Port for HTTP transport (default: 8000)",
     )
+
+    # Subcommand: setup
+    subparsers.add_parser("setup", help="Interactive credential setup wizard")
+
+    # Subcommand: admin
+    admin_parser = subparsers.add_parser(
+        "admin", help="Launch admin dashboard web UI"
+    )
+    admin_parser.add_argument(
+        "--port",
+        type=int,
+        default=8001,
+        help="Port for admin dashboard (default: 8001)",
+    )
+    admin_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host for admin dashboard (default: 127.0.0.1)",
+    )
+
     args = parser.parse_args()
 
-    # Validate credentials on startup (warns but doesn't fail)
+    if args.command == "setup":
+        from marketing_mcp.cli_setup import run_setup
+
+        run_setup()
+        return
+
+    if args.command == "admin":
+        import uvicorn
+
+        from marketing_mcp.admin.routes import create_admin_app
+
+        app = create_admin_app()
+        print(f"Admin dashboard: http://{args.host}:{args.port}/admin")
+        uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+        return
+
+    # Default: run MCP server
     available = validate_credentials()
     if available:
         logger.info("Available API integrations: %s", ", ".join(available))
