@@ -1,5 +1,8 @@
 """Credential loading and validation helpers."""
 
+from __future__ import annotations
+
+import json
 import logging
 import os
 
@@ -50,7 +53,58 @@ CREDENTIAL_CONFIG: dict[str, tuple[list[str], list[str]]] = {
         [],
         ["PAGESPEED_API_KEY"],
     ),
+    "google_business_profile": (
+        ["GOOGLE_SERVICE_ACCOUNT_JSON"],
+        ["GBP_ACCOUNT_ID", "GBP_LOCATION_ID"],
+    ),
 }
+
+
+def get_google_service_credentials(
+    scopes: list[str] | None = None,
+):
+    """Build Google service account credentials from GOOGLE_SERVICE_ACCOUNT_JSON.
+
+    The env var can be a file path or a JSON string.
+    Returns google.oauth2.service_account.Credentials or None.
+    """
+    sa_json = get_credential("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if not sa_json:
+        return None
+
+    from google.oauth2 import service_account
+
+    if os.path.isfile(sa_json):
+        return service_account.Credentials.from_service_account_file(
+            sa_json, scopes=scopes
+        )
+    info = json.loads(sa_json)
+    return service_account.Credentials.from_service_account_info(info, scopes=scopes)
+
+
+def get_google_ads_client():
+    """Build a GoogleAdsClient from environment variables. Returns None if unconfigured."""
+    required = [
+        "GOOGLE_ADS_CLIENT_ID",
+        "GOOGLE_ADS_CLIENT_SECRET",
+        "GOOGLE_ADS_REFRESH_TOKEN",
+        "GOOGLE_ADS_DEVELOPER_TOKEN",
+    ]
+    if any(not get_credential(k) for k in required):
+        return None
+
+    from google.ads.googleads.client import GoogleAdsClient
+
+    return GoogleAdsClient.load_from_dict(
+        {
+            "client_id": get_credential("GOOGLE_ADS_CLIENT_ID"),
+            "client_secret": get_credential("GOOGLE_ADS_CLIENT_SECRET"),
+            "refresh_token": get_credential("GOOGLE_ADS_REFRESH_TOKEN"),
+            "developer_token": get_credential("GOOGLE_ADS_DEVELOPER_TOKEN"),
+            "login_customer_id": get_credential("GOOGLE_ADS_CUSTOMER_ID"),
+            "use_proto_plus": True,
+        }
+    )
 
 
 def get_credential(name: str) -> str | None:

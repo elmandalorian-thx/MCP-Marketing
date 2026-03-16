@@ -11,6 +11,17 @@ logger = logging.getLogger(__name__)
 
 mcp = FastMCP("marketing_mcp")
 
+# Register all Tier 1 tool modules (decorators bind to `mcp` on import)
+import marketing_mcp.clients.pagespeed  # noqa: E402, F401
+import marketing_mcp.clients.google_ads  # noqa: E402, F401
+import marketing_mcp.clients.search_console  # noqa: E402, F401
+import marketing_mcp.clients.ga4  # noqa: E402, F401
+import marketing_mcp.clients.meta  # noqa: E402, F401
+import marketing_mcp.clients.google_trends  # noqa: E402, F401
+import marketing_mcp.clients.youtube  # noqa: E402, F401
+import marketing_mcp.clients.reddit  # noqa: E402, F401
+import marketing_mcp.clients.google_business  # noqa: E402, F401
+
 
 def main() -> None:
     """Run the Marketing MCP server."""
