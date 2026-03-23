@@ -41,6 +41,7 @@ export const users = pgTable("users", {
     .references(() => tenants.id, { onDelete: "cascade" }),
   email: varchar("email", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }),
+  passwordHash: varchar("password_hash", { length: 255 }),
   role: varchar("role", { length: 20 }).notNull().default("member"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

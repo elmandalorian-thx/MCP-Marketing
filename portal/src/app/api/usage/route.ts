@@ -1,47 +1,35 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { usageLogs } from "@/lib/schema";
-import { eq, sql, gte, and } from "drizzle-orm";
-
-const DEMO_TENANT_ID = process.env.DEMO_TENANT_ID;
+import { eq, sql, and, gte } from "drizzle-orm";
 
 export async function GET() {
-  if (!DEMO_TENANT_ID) {
-    return NextResponse.json({ error: "No tenant configured" }, { status: 400 });
-  }
+  const session = await getServerSession(authOptions) as any;
+  if (!session?.tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  // Daily usage for the current month
-  const dailyUsage = await db
-    .select({
-      date: sql<string>`DATE(created_at)`,
+  const [daily, topTools] = await Promise.all([
+    db.select({
+      date: sql<string>`TO_CHAR(created_at, 'YYYY-MM-DD')`,
       total: sql<number>`count(*)`,
-      successful: sql<number>`count(*) FILTER (WHERE success = true)`,
-      failed: sql<number>`count(*) FILTER (WHERE success = false)`,
-    })
-    .from(usageLogs)
-    .where(
-      and(eq(usageLogs.tenantId, DEMO_TENANT_ID), gte(usageLogs.createdAt, monthStart))
-    )
-    .groupBy(sql`DATE(created_at)`)
-    .orderBy(sql`DATE(created_at)`);
-
-  // Top tools
-  const topTools = await db
-    .select({
+    }).from(usageLogs)
+      .where(and(eq(usageLogs.tenantId, session.tenantId), gte(usageLogs.createdAt, monthStart)))
+      .groupBy(sql`TO_CHAR(created_at, 'YYYY-MM-DD')`)
+      .orderBy(sql`TO_CHAR(created_at, 'YYYY-MM-DD')`),
+    db.select({
       toolName: usageLogs.toolName,
       count: sql<number>`count(*)`,
-      avgDuration: sql<number>`avg(duration_ms)::int`,
-    })
-    .from(usageLogs)
-    .where(
-      and(eq(usageLogs.tenantId, DEMO_TENANT_ID), gte(usageLogs.createdAt, monthStart))
-    )
-    .groupBy(usageLogs.toolName)
-    .orderBy(sql`count(*) DESC`)
-    .limit(10);
+      avgDuration: sql<number>`COALESCE(AVG(duration_ms)::int, 0)`,
+    }).from(usageLogs)
+      .where(and(eq(usageLogs.tenantId, session.tenantId), gte(usageLogs.createdAt, monthStart)))
+      .groupBy(usageLogs.toolName)
+      .orderBy(sql`count(*) DESC`)
+      .limit(10),
+  ]);
 
-  return NextResponse.json({ dailyUsage, topTools });
+  return NextResponse.json({ daily, topTools });
 }

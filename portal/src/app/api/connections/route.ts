@@ -1,76 +1,70 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { platformConnections } from "@/lib/schema";
 import { eq, and } from "drizzle-orm";
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { createCipheriv, randomBytes } from "crypto";
 
-const DEMO_TENANT_ID = process.env.DEMO_TENANT_ID;
-
-function getEncryptionKey(): Buffer {
-  const keyHex = process.env.CREDENTIAL_ENCRYPTION_KEY;
-  if (!keyHex || keyHex.length !== 64) {
-    throw new Error("CREDENTIAL_ENCRYPTION_KEY must be a 64-char hex string");
-  }
-  return Buffer.from(keyHex, "hex");
+function getTenantId(session: any): string | null {
+  return session?.tenantId || null;
 }
 
-function encryptCredentials(creds: Record<string, string>): {
-  encrypted: Buffer;
-  nonce: Buffer;
-} {
+function getEncryptionKey(): Buffer {
+  const hex = process.env.CREDENTIAL_ENCRYPTION_KEY;
+  if (!hex || hex.length !== 64) throw new Error("CREDENTIAL_ENCRYPTION_KEY required");
+  return Buffer.from(hex, "hex");
+}
+
+function encrypt(creds: Record<string, string>): { encrypted: Buffer; nonce: Buffer } {
   const key = getEncryptionKey();
   const nonce = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, nonce);
   const plaintext = JSON.stringify(creds);
-  const encrypted = Buffer.concat([
-    cipher.update(plaintext, "utf8"),
-    cipher.final(),
-    cipher.getAuthTag(),
-  ]);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final(), cipher.getAuthTag()]);
   return { encrypted, nonce };
 }
 
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  const tenantId = getTenantId(session);
+  if (!tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const conns = await db.select({
+    id: platformConnections.id,
+    platform: platformConnections.platform,
+    isActive: platformConnections.isActive,
+    createdAt: platformConnections.createdAt,
+    updatedAt: platformConnections.updatedAt,
+  }).from(platformConnections)
+    .where(eq(platformConnections.tenantId, tenantId));
+
+  return NextResponse.json(conns);
+}
+
 export async function POST(request: NextRequest) {
-  if (!DEMO_TENANT_ID) {
-    return NextResponse.json({ error: "No tenant configured" }, { status: 400 });
-  }
+  const session = await getServerSession(authOptions);
+  const tenantId = getTenantId(session);
+  if (!tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await request.json();
-  const { platform, credentials } = body;
+  const { platform, credentials } = await request.json();
+  if (!platform || !credentials) return NextResponse.json({ error: "platform and credentials required" }, { status: 400 });
 
-  if (!platform || !credentials || typeof credentials !== "object") {
-    return NextResponse.json(
-      { error: "platform and credentials are required" },
-      { status: 400 }
-    );
-  }
+  const { encrypted, nonce } = encrypt(credentials);
 
-  const { encrypted, nonce } = encryptCredentials(credentials);
-
-  // Upsert: insert or update if platform connection already exists
-  const existing = await db
-    .select({ id: platformConnections.id })
-    .from(platformConnections)
-    .where(
-      and(
-        eq(platformConnections.tenantId, DEMO_TENANT_ID),
-        eq(platformConnections.platform, platform)
-      )
-    )
+  const [existing] = await db.select({ id: platformConnections.id }).from(platformConnections)
+    .where(and(eq(platformConnections.tenantId, tenantId), eq(platformConnections.platform, platform)))
     .limit(1);
 
-  if (existing.length > 0) {
-    await db
-      .update(platformConnections)
-      .set({
-        credentialsEncrypted: encrypted,
-        credentialsNonce: nonce,
-        isActive: true,
-      })
-      .where(eq(platformConnections.id, existing[0].id));
+  if (existing) {
+    await db.update(platformConnections).set({
+      credentialsEncrypted: encrypted,
+      credentialsNonce: nonce,
+      isActive: true,
+    }).where(eq(platformConnections.id, existing.id));
   } else {
     await db.insert(platformConnections).values({
-      tenantId: DEMO_TENANT_ID,
+      tenantId,
       platform,
       credentialsEncrypted: encrypted,
       credentialsNonce: nonce,
@@ -80,21 +74,16 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ saved: true, platform });
 }
 
-export async function GET() {
-  if (!DEMO_TENANT_ID) {
-    return NextResponse.json({ error: "No tenant configured" }, { status: 400 });
-  }
+export async function DELETE(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  const tenantId = getTenantId(session);
+  if (!tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const connections = await db
-    .select({
-      id: platformConnections.id,
-      platform: platformConnections.platform,
-      isActive: platformConnections.isActive,
-      createdAt: platformConnections.createdAt,
-      updatedAt: platformConnections.updatedAt,
-    })
-    .from(platformConnections)
-    .where(eq(platformConnections.tenantId, DEMO_TENANT_ID));
+  const platform = request.nextUrl.searchParams.get("platform");
+  if (!platform) return NextResponse.json({ error: "platform required" }, { status: 400 });
 
-  return NextResponse.json(connections);
+  await db.update(platformConnections).set({ isActive: false })
+    .where(and(eq(platformConnections.tenantId, tenantId), eq(platformConnections.platform, platform)));
+
+  return NextResponse.json({ disconnected: true });
 }
