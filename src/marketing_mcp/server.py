@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 
 from fastmcp import FastMCP
 
@@ -10,6 +11,19 @@ from marketing_mcp.utils.auth import validate_credentials
 logger = logging.getLogger(__name__)
 
 mcp = FastMCP("marketing_mcp")
+
+# ── Multi-tenant mode (opt-in via MULTI_TENANT=true) ──
+_MULTI_TENANT = os.environ.get("MULTI_TENANT", "").lower() == "true"
+
+if _MULTI_TENANT:
+    from marketing_mcp.multi_tenant.middleware import (  # noqa: E402
+        TenantAuthMiddleware,
+        UsageLoggingMiddleware,
+    )
+
+    mcp.add_middleware(TenantAuthMiddleware())
+    mcp.add_middleware(UsageLoggingMiddleware())
+    logger.info("Multi-tenant mode enabled — API key auth required.")
 
 # Register all Tier 1 tool modules (decorators bind to `mcp` on import)
 import marketing_mcp.clients.pagespeed  # noqa: E402, F401
@@ -35,10 +49,16 @@ import marketing_mcp.clients.yelp  # noqa: E402, F401
 import marketing_mcp.clients.builtwith  # noqa: E402, F401
 import marketing_mcp.clients.hubspot  # noqa: E402, F401
 
+# Register prompt library and generator tools
+import marketing_mcp.prompts.tools  # noqa: E402, F401
+import marketing_mcp.prompts.mcp_prompts  # noqa: E402, F401
+
 # Register admin dashboard routes (available in HTTP mode)
 from marketing_mcp.admin.routes import register_admin_routes  # noqa: E402
+from marketing_mcp.homepage.routes import register_homepage_routes  # noqa: E402
 
 register_admin_routes(mcp)
+register_homepage_routes(mcp)
 
 
 def main() -> None:

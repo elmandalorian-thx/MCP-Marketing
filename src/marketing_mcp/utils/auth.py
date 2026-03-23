@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import os
@@ -9,6 +10,13 @@ import os
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
+
+# When set by TenantAuthMiddleware, get_credential() reads from this
+# instead of os.environ. Keys are env var names, values are credential strings.
+# Special keys: __tenant_id__, __api_key_id__, __plan_tier__.
+_tenant_ctx: contextvars.ContextVar[dict[str, str] | None] = contextvars.ContextVar(
+    "_tenant_ctx", default=None
+)
 
 # Load .env file if present
 load_dotenv()
@@ -156,10 +164,13 @@ def get_google_ads_client():
 
 
 def get_credential(name: str) -> str | None:
-    """Get a credential value from environment variables.
+    """Get a credential value — tenant-aware if context is set, else env var.
 
     Returns None if the variable is not set. Never logs the value.
     """
+    tenant_creds = _tenant_ctx.get()
+    if tenant_creds is not None:
+        return tenant_creds.get(name)
     return os.environ.get(name)
 
 

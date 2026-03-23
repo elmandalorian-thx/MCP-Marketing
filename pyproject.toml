@@ -18,6 +18,8 @@ dependencies = [
     "google-analytics-data>=0.18",
     "pytrends>=4.9",
     "praw>=7.7",
+    "asyncpg>=0.29",
+    "cryptography>=42.0",
 ]
 
 [project.optional-dependencies]
