@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# deploy.sh — Auto-commit, push to GitHub, rebuild and redeploy the MCP container.
-# Triggered by the systemd file watcher or run manually.
+# deploy.sh — Pull from GitHub (source of truth), rebuild and redeploy the MCP container.
+# Triggered by systemd file watcher or run manually.
+#
+# WORKFLOW: GitHub is the single source of truth.
+# - Local PC or server Claude Code CLI → commit → push to GitHub
+# - This script: pull from GitHub → build → deploy
+# - Never auto-commits or pushes from here.
 
 set -euo pipefail
 
@@ -11,18 +16,11 @@ ENV_FILE="${REPO_DIR}/.env"
 
 cd "$REPO_DIR"
 
-# ── 1. Git: commit and push any changes ──
-if [[ -n "$(git status --porcelain)" ]]; then
-    git add -A
-    # Use the list of changed files as the commit message
-    CHANGED=$(git diff --cached --name-only | head -10 | tr '\n' ', ' | sed 's/,$//')
-    git commit -m "Auto-sync: ${CHANGED}" \
-        -m "Pushed automatically from server via deploy.sh"
-    git push origin main
-    echo "[deploy] Pushed changes to GitHub."
-else
-    echo "[deploy] No changes to push."
-fi
+# ── 1. Git: pull latest from GitHub ──
+echo "[deploy] Pulling latest from GitHub..."
+git fetch origin main
+git reset --hard origin/main
+echo "[deploy] Synced to $(git rev-parse --short HEAD)"
 
 # ── 2. Docker: rebuild and redeploy ──
 TIMESTAMP=$(date +%s)
