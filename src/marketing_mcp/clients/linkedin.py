@@ -36,14 +36,6 @@ def linkedin_ad_targeting(
     if not token:
         return "LINKEDIN_ACCESS_TOKEN not configured. Get one at https://www.linkedin.com/developers/"
 
-    facet_map = {
-        "industries": "typeahead/industries",
-        "titles": "typeahead/titles",
-        "skills": "typeahead/skills",
-        "seniorities": "typeahead/seniorities",
-    }
-    endpoint = facet_map.get(facet, "typeahead/industries")
-
     try:
         resp = httpx.get(
             f"{_API_URL}/adTargetingEntities",

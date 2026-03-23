@@ -30,7 +30,7 @@ def builtwith_lookup(
 
     try:
         resp = httpx.get(
-            f"https://api.builtwith.com/free1/api.json",
+            "https://api.builtwith.com/free1/api.json",
             params={"KEY": "free", "LOOKUP": domain},
             timeout=20,
         )
