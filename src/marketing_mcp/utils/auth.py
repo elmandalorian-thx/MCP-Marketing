@@ -61,6 +61,50 @@ CREDENTIAL_CONFIG: dict[str, tuple[list[str], list[str]]] = {
         ["GOOGLE_SERVICE_ACCOUNT_JSON"],
         ["GDRIVE_FOLDER_ID"],
     ),
+    "semrush": (
+        ["SEMRUSH_API_KEY"],
+        [],
+    ),
+    "linkedin": (
+        ["LINKEDIN_ACCESS_TOKEN"],
+        [],
+    ),
+    "bing_webmaster": (
+        ["BING_WEBMASTER_API_KEY"],
+        [],
+    ),
+    "mailchimp": (
+        ["MAILCHIMP_API_KEY"],
+        [],
+    ),
+    "tiktok": (
+        ["TIKTOK_ACCESS_TOKEN"],
+        [],
+    ),
+    "pinterest": (
+        ["PINTEREST_ACCESS_TOKEN"],
+        [],
+    ),
+    "x_twitter": (
+        ["X_BEARER_TOKEN"],
+        [],
+    ),
+    "shopify": (
+        ["SHOPIFY_STORE_URL", "SHOPIFY_ACCESS_TOKEN"],
+        [],
+    ),
+    "yelp": (
+        ["YELP_API_KEY"],
+        [],
+    ),
+    "hubspot": (
+        ["HUBSPOT_ACCESS_TOKEN"],
+        [],
+    ),
+    "builtwith": (
+        [],
+        [],
+    ),
 }
 
 
@@ -164,6 +208,17 @@ INTEGRATION_LABELS: dict[str, str] = {
     "pagespeed": "PageSpeed Insights",
     "google_business_profile": "Google Business Profile",
     "google_drive": "Google Drive",
+    "semrush": "Semrush",
+    "linkedin": "LinkedIn",
+    "bing_webmaster": "Bing Webmaster",
+    "mailchimp": "Mailchimp",
+    "tiktok": "TikTok Ads",
+    "pinterest": "Pinterest",
+    "x_twitter": "X (Twitter)",
+    "shopify": "Shopify",
+    "yelp": "Yelp",
+    "hubspot": "HubSpot",
+    "builtwith": "BuiltWith",
 }
 
 

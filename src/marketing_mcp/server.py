@@ -22,6 +22,18 @@ import marketing_mcp.clients.youtube  # noqa: E402, F401
 import marketing_mcp.clients.reddit  # noqa: E402, F401
 import marketing_mcp.clients.google_business  # noqa: E402, F401
 import marketing_mcp.clients.google_drive  # noqa: E402, F401
+import marketing_mcp.clients.client_profiles  # noqa: E402, F401
+import marketing_mcp.clients.semrush  # noqa: E402, F401
+import marketing_mcp.clients.linkedin  # noqa: E402, F401
+import marketing_mcp.clients.bing_webmaster  # noqa: E402, F401
+import marketing_mcp.clients.mailchimp  # noqa: E402, F401
+import marketing_mcp.clients.tiktok  # noqa: E402, F401
+import marketing_mcp.clients.pinterest  # noqa: E402, F401
+import marketing_mcp.clients.twitter  # noqa: E402, F401
+import marketing_mcp.clients.shopify  # noqa: E402, F401
+import marketing_mcp.clients.yelp  # noqa: E402, F401
+import marketing_mcp.clients.builtwith  # noqa: E402, F401
+import marketing_mcp.clients.hubspot  # noqa: E402, F401
 
 # Register admin dashboard routes (available in HTTP mode)
 from marketing_mcp.admin.routes import register_admin_routes  # noqa: E402

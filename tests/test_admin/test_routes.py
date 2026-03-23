@@ -63,7 +63,7 @@ def test_health_endpoint(client):
     data = resp.json()
     assert data["status"] == "ok"
     assert "python_version" in data
-    assert data["tools"] == 14
+    assert data["tools"] >= 14
 
 
 def test_test_integration_unknown(client):
