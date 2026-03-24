@@ -39,13 +39,15 @@ docker run -d \
     --env-file "$ENV_FILE" \
     -l "traefik.enable=true" \
     -l "traefik.http.routers.marketingmcp-http.entryPoints=http" \
-    -l "traefik.http.routers.marketingmcp-http.rule=Host(\`marketingmcp.statika.net\`)" \
+    -l "traefik.http.routers.marketingmcp-http.rule=Host(\`marketingmcp.statika.net\`) && PathPrefix(\`/mcp\`)" \
     -l "traefik.http.routers.marketingmcp-http.middlewares=redirect-to-https" \
+    -l "traefik.http.routers.marketingmcp-http.priority=100" \
     -l "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https" \
     -l "traefik.http.routers.marketingmcp-https.entryPoints=https" \
-    -l "traefik.http.routers.marketingmcp-https.rule=Host(\`marketingmcp.statika.net\`)" \
+    -l "traefik.http.routers.marketingmcp-https.rule=Host(\`marketingmcp.statika.net\`) && PathPrefix(\`/mcp\`)" \
     -l "traefik.http.routers.marketingmcp-https.tls=true" \
     -l "traefik.http.routers.marketingmcp-https.tls.certresolver=letsencrypt" \
+    -l "traefik.http.routers.marketingmcp-https.priority=100" \
     -l "traefik.http.services.marketingmcp.loadbalancer.server.port=8000" \
     "${IMAGE_NAME}:${TAG}"
 
