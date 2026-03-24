@@ -1,9 +1,9 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 
-const protectedRoutes = ["/dashboard", "/connect", "/keys", "/clients", "/usage", "/profile"];
+const protectedRoutes = ["/dashboard"];
 const adminRoutes = ["/admin"];
-const authRoutes = ["/", "/signup"];
+const authRoutes = ["/login", "/signup"];
 
 export async function middleware(request: NextRequest) {
   const token = await getToken({ req: request });
@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
   // Protect admin routes — super admin only
   if (adminRoutes.some((r) => pathname.startsWith(r))) {
     if (!token) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/login", request.url));
     }
     if (!token.isSuperAdmin) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
   // Protect dashboard routes
   if (protectedRoutes.some((r) => pathname.startsWith(r))) {
     if (!token) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/login", request.url));
     }
   }
 
@@ -36,9 +36,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/", "/signup",
-    "/dashboard/:path*", "/connect/:path*", "/keys/:path*",
-    "/clients/:path*", "/usage/:path*", "/profile/:path*",
+    "/login", "/signup",
+    "/dashboard/:path*",
     "/admin/:path*",
   ],
 };
