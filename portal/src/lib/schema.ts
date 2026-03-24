@@ -30,6 +30,7 @@ export const tenants = pgTable("tenants", {
   maxMonthlyCalls: integer("max_monthly_calls").notNull().default(500),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  isSuspended: boolean("is_suspended").notNull().default(false),
 });
 
 // ── Users ────────────────────────────────────────────────────────────
@@ -88,7 +89,40 @@ export const usageLogs = pgTable("usage_logs", {
   durationMs: integer("duration_ms"),
   success: boolean("success").notNull().default(true),
   errorMessage: text("error_message"),
+  ipAddress: varchar("ip_address", { length: 45 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── OAuth Change Log ────────────────────────────────────────────────
+
+export const oauthChangeLog = pgTable("oauth_change_log", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: uuid("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" }),
+  actorType: varchar("actor_type", { length: 10 }).notNull().default("user"),
+  platform: varchar("platform", { length: 50 }).notNull(),
+  action: varchar("action", { length: 20 }).notNull(),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ── Alerts ──────────────────────────────────────────────────────────
+
+export const alerts = pgTable("alerts", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: uuid("tenant_id")
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  severity: varchar("severity", { length: 10 }).notNull(),
+  type: varchar("type", { length: 30 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  isRead: boolean("is_read").notNull().default(false),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 // ── Type exports ─────────────────────────────────────────────────────
@@ -98,3 +132,6 @@ export type NewTenant = typeof tenants.$inferInsert;
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type PlatformConnection = typeof platformConnections.$inferSelect;
 export type UsageLog = typeof usageLogs.$inferSelect;
+export type OauthChangeLog = typeof oauthChangeLog.$inferSelect;
+export type Alert = typeof alerts.$inferSelect;
+export type NewAlert = typeof alerts.$inferInsert;
