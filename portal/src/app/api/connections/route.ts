@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { platformConnections } from "@/lib/schema";
-import { eq, and } from "drizzle-orm";
+import { platformConnections, oauthChangeLog } from "@/lib/schema";
+import { eq, and, gte, sql } from "drizzle-orm";
 import { createCipheriv, randomBytes } from "crypto";
 
 function getTenantId(session: any): string | null {
@@ -23,6 +23,64 @@ function encrypt(creds: Record<string, string>): { encrypted: Buffer; nonce: Buf
   const plaintext = JSON.stringify(creds);
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final(), cipher.getAuthTag()]);
   return { encrypted, nonce };
+}
+
+async function checkOAuthRateLimit(
+  tenantId: string,
+  platform: string
+): Promise<{ blocked: boolean; retryAfterSeconds?: number }> {
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+  const [result] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(oauthChangeLog)
+    .where(
+      and(
+        eq(oauthChangeLog.tenantId, tenantId),
+        eq(oauthChangeLog.platform, platform),
+        gte(oauthChangeLog.createdAt, tenMinutesAgo)
+      )
+    );
+
+  if ((result?.count ?? 0) >= 4) {
+    const [oldest] = await db
+      .select({ createdAt: oauthChangeLog.createdAt })
+      .from(oauthChangeLog)
+      .where(
+        and(
+          eq(oauthChangeLog.tenantId, tenantId),
+          eq(oauthChangeLog.platform, platform),
+          gte(oauthChangeLog.createdAt, tenMinutesAgo)
+        )
+      )
+      .orderBy(oauthChangeLog.createdAt)
+      .limit(1);
+
+    const retryAfterMs = oldest
+      ? (oldest.createdAt!.getTime() + 10 * 60 * 1000) - Date.now()
+      : 600000;
+
+    return { blocked: true, retryAfterSeconds: Math.ceil(Math.max(retryAfterMs, 0) / 1000) };
+  }
+
+  return { blocked: false };
+}
+
+async function logOAuthChange(
+  tenantId: string,
+  userId: string | null,
+  platform: string,
+  action: string,
+  ip: string | null
+): Promise<void> {
+  await db.insert(oauthChangeLog).values({
+    tenantId,
+    userId,
+    actorType: "user",
+    platform,
+    action,
+    ipAddress: ip,
+  });
 }
 
 export async function GET() {
@@ -50,6 +108,15 @@ export async function POST(request: NextRequest) {
   const { platform, credentials } = await request.json();
   if (!platform || !credentials) return NextResponse.json({ error: "platform and credentials required" }, { status: 400 });
 
+  // OAuth rate limiting
+  const rateCheck = await checkOAuthRateLimit(tenantId, platform);
+  if (rateCheck.blocked) {
+    return NextResponse.json(
+      { error: `Too many credential changes. Try again in ${rateCheck.retryAfterSeconds} seconds.` },
+      { status: 429 }
+    );
+  }
+
   const { encrypted, nonce } = encrypt(credentials);
 
   const [existing] = await db.select({ id: platformConnections.id }).from(platformConnections)
@@ -71,6 +138,11 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // Log the change
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+  const userId = (session as any)?.userId || null;
+  await logOAuthChange(tenantId, userId, platform, existing ? "updated" : "connected", ip);
+
   return NextResponse.json({ saved: true, platform });
 }
 
@@ -82,8 +154,22 @@ export async function DELETE(request: NextRequest) {
   const platform = request.nextUrl.searchParams.get("platform");
   if (!platform) return NextResponse.json({ error: "platform required" }, { status: 400 });
 
+  // OAuth rate limiting
+  const rateCheck = await checkOAuthRateLimit(tenantId, platform);
+  if (rateCheck.blocked) {
+    return NextResponse.json(
+      { error: `Too many credential changes. Try again in ${rateCheck.retryAfterSeconds} seconds.` },
+      { status: 429 }
+    );
+  }
+
   await db.update(platformConnections).set({ isActive: false })
     .where(and(eq(platformConnections.tenantId, tenantId), eq(platformConnections.platform, platform)));
+
+  // Log the change
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
+  const userId = (session as any)?.userId || null;
+  await logOAuthChange(tenantId, userId, platform, "disconnected", ip);
 
   return NextResponse.json({ disconnected: true });
 }
