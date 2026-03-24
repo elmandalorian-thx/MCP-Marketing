@@ -177,6 +177,10 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role;
         token.planTier = (user as any).planTier;
       }
+      // Ensure email is on token (defensive — NextAuth usually copies it)
+      if (user?.email) token.email = user.email;
+      // Super admin check — always re-evaluate (env var can change)
+      token.isSuperAdmin = !!token.email && token.email === process.env.SUPER_ADMIN_EMAIL;
       return token;
     },
 
@@ -188,6 +192,7 @@ export const authOptions: NextAuthOptions = {
         tenantName: token.tenantName as string,
         role: token.role as string,
         planTier: token.planTier as string,
+        isSuperAdmin: token.isSuperAdmin as boolean,
       };
     },
   },
