@@ -14,13 +14,15 @@ Add a super admin section to the existing Next.js portal (`portal.statika.net`) 
 
 ### Super Admin Identification
 - Single env var: `SUPER_ADMIN_EMAIL=<owner-email>`
-- NextAuth `session` callback checks `user.email === process.env.SUPER_ADMIN_EMAIL` and sets `isSuperAdmin: true` on the JWT/session
+- NextAuth `jwt` callback sets `token.isSuperAdmin = (user.email === process.env.SUPER_ADMIN_EMAIL)`
+- NextAuth `session` callback copies `token.isSuperAdmin` to `session.user.isSuperAdmin`
 - No DB column — env-driven, tamper-proof from the app layer
 
 ### Route Protection
-- All `/admin/*` portal routes gated by middleware checking `session.isSuperAdmin`
-- Regular users hitting `/admin/*` → redirect to `/dashboard`
-- API routes under `/api/admin/*` → 403 if not super admin
+- Extend middleware matcher in `portal/src/middleware.ts` to include `/admin/:path*`
+- Middleware reads `isSuperAdmin` from the JWT token via `getToken()` (not `getServerSession`)
+- Non-super-admin users hitting `/admin/*` → redirect to `/dashboard`
+- API routes under `/api/admin/*` check `token.isSuperAdmin` → 403 if not super admin
 
 ### Regular Subscriber Access (unchanged)
 - Login via Google/GitHub OAuth
@@ -63,10 +65,11 @@ Add a super admin section to the existing Next.js portal (`portal.statika.net`) 
 - Test connection button per platform
 - Status badges: configured / partial / not configured
 
-### `/admin/config` — Config Editor
-- Edit `.env`, `clients.json`, `pyproject.toml` (whitelist only)
-- Syntax-highlighted textarea
-- Save with validation
+### `/admin/config` — Config Viewer (read-only)
+- Read-only view of non-secret config values from `clients.json` and `pyproject.toml`
+- Secrets (API keys, tokens) are masked — never displayed in plaintext
+- No write access — server configuration changes must go through deployment pipelines or SSH
+- `.env` is excluded entirely from the web UI for security
 
 ---
 
@@ -80,17 +83,20 @@ Users swapping OAuth credentials frequently to share one subscription across mul
 oauth_change_log
 ├── id (BIGSERIAL PK)
 ├── tenant_id (FK → tenants, CASCADE)
-├── user_id (FK → users, CASCADE)
+├── user_id (FK → users, CASCADE, nullable — null for admin-initiated actions)
+├── actor_type (varchar: user | admin)
 ├── platform (varchar)
 ├── action (varchar: connected | disconnected | updated)
-├── ip_address (varchar)
+├── ip_address (varchar(45))
 ├── created_at (timestamp, indexed)
 ```
 
 ### Rate Limiting Logic
 - On every OAuth connect/disconnect/update, log to `oauth_change_log`
 - Before allowing a change, count changes for `(tenant_id, platform)` in the last 10 minutes
-- If count >= 2: **hard block** — return error with cooldown timer ("You can change this connection again in X minutes")
+- Threshold: **4 changes per 10 minutes** (a legitimate disconnect+reconnect = 2 operations, so the limit allows 2 full swap cycles before blocking)
+- If count >= 4: **hard block** — return error with cooldown timer ("You can change this connection again in X minutes")
+- Admin-initiated actions (`actor_type = 'admin'`) are exempt from rate limiting
 - No alert sent — just a block with user-facing message
 
 ### Detection Queries (admin dashboard)
@@ -111,7 +117,7 @@ oauth_change_log
 
 | Trigger | Severity | Description |
 |---------|----------|-------------|
-| OAuth rate limit hit | warning | Tenant tried to swap credentials beyond 2/10min |
+| OAuth rate limit hit | warning | Tenant tried to swap credentials beyond 4/10min |
 | Usage spike | warning | Tenant exceeds 200% of their hourly average |
 | Failed auth burst | critical | 10+ failed API key attempts from same IP in 5 min |
 | Plan limit approaching | info | Tenant at 80% of monthly call limit |
@@ -130,7 +136,13 @@ alerts
 ├── is_read (boolean, default false)
 ├── resolved_at (timestamp, nullable)
 ├── created_at (timestamp, indexed)
+├── updated_at (timestamp, auto-updated on any change)
 ```
+
+### Alert Deduplication
+- Before inserting a cron-generated alert, check if one with the same `(tenant_id, type)` already exists within the last 24 hours
+- If duplicate found: skip insertion (no duplicate alerts)
+- Inline alerts (OAuth rate limit, failed auth) are NOT deduplicated — each occurrence is logged
 
 ### Notification Delivery
 On alert creation, check severity:
@@ -145,7 +157,7 @@ On alert creation, check severity:
 
 **Inline (synchronous, during requests):**
 - OAuth rate limit hits → alert created in `/api/connections` route
-- Failed auth bursts → alert created in tenant auth middleware
+- Failed auth bursts → alert created in the MCP server's `TenantAuthMiddleware` (Python side), which handles API key validation. Requires adding `ip_address` column to `usage_logs` table for tracking failed attempts by IP.
 - New signups → alert created in NextAuth provisioning callback
 
 **Hourly cron** — Next.js API route `/api/admin/cron/check-alerts`:
@@ -177,9 +189,11 @@ Sales site at `marketingmcp.statika.net` — no login/signup flow. "Get Started"
 
 1. **`/login` page** — unchanged, accepts redirects from sales site
 2. **`/signup` page** — reads `?plan=` query param:
-   - Stores selected plan in session/cookie during OAuth flow
-   - After account creation, sets `tenant.plan_tier` to selected plan (default: `free`)
-   - For paid plans: redirect to Stripe checkout after signup before activating plan
+   - Stores selected plan in a cookie during OAuth flow
+   - Tenant is **always created with `plan_tier = 'free'`** regardless of selected plan
+   - After signup, if `plan !== 'free'`, redirect to Stripe Checkout session
+   - Stripe webhook handler (`/api/webhooks/stripe`) upgrades `tenant.plan_tier` only on successful payment (`checkout.session.completed` event)
+   - If user abandons Stripe Checkout, they remain on the free plan — no harm done
 3. **Post-login redirect** → `portal.statika.net/dashboard`
 
 No cross-origin complexity — sales site just links out, portal handles everything.
@@ -196,9 +210,15 @@ No cross-origin complexity — sales site just links out, portal handles everyth
 - `oauth_change_log(tenant_id, platform, created_at)` — rate limit count query
 - `alerts(is_read, created_at)` — unread alert feed
 - `alerts(tenant_id, created_at)` — tenant-specific alert history
+- `alerts(tenant_id, type, created_at)` — deduplication check for cron-generated alerts
 
-### No Changes to Existing Tables
-Super admin role is env-driven (`SUPER_ADMIN_EMAIL`), not a DB column.
+### Changes to Existing Tables
+- `usage_logs`: add `ip_address (varchar(45), nullable)` column — needed for failed auth burst detection by IP
+
+### Notes
+- Super admin role is env-driven (`SUPER_ADMIN_EMAIL`), not a DB column
+- All admin pages use cursor-based pagination (keyset on `id`) for tenants, alerts, and usage logs
+- Data retention: `oauth_change_log` records older than 1 year and `alerts` older than 90 days should be archived/pruned via a separate cron route (`/api/admin/cron/cleanup`) protected by the same `CRON_SECRET`, triggered daily
 
 ---
 
@@ -209,6 +229,7 @@ Super admin role is env-driven (`SUPER_ADMIN_EMAIL`), not a DB column.
 | `SUPER_ADMIN_EMAIL` | Email address of the super admin account |
 | `CRON_SECRET` | Bearer token protecting the hourly alert cron endpoint |
 | `SMTP_*` or `RESEND_API_KEY` | Email delivery for alert notifications |
+| `STRIPE_WEBHOOK_SECRET` | Verify Stripe webhook signatures for plan upgrades |
 
 ---
 
