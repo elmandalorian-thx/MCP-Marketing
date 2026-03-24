@@ -58,13 +58,13 @@ export function Topbar({ title }: { title: string }) {
 
           {menuOpen && (
             <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-[#eee] py-2 animate-in">
-              <a href="/profile" className="flex items-center gap-3 px-4 py-2.5 text-[0.8rem] text-[#252422] no-underline hover:bg-[#f4f3ef] transition-colors">
+              <a href="/dashboard/profile" className="flex items-center gap-3 px-4 py-2.5 text-[0.8rem] text-[#252422] no-underline hover:bg-[#f4f3ef] transition-colors">
                 <svg className="w-4 h-4 text-[#9A9A9A]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
                 My Profile
               </a>
-              <a href="/keys" className="flex items-center gap-3 px-4 py-2.5 text-[0.8rem] text-[#252422] no-underline hover:bg-[#f4f3ef] transition-colors">
+              <a href="/dashboard/keys" className="flex items-center gap-3 px-4 py-2.5 text-[0.8rem] text-[#252422] no-underline hover:bg-[#f4f3ef] transition-colors">
                 <svg className="w-4 h-4 text-[#9A9A9A]" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                 </svg>
@@ -72,7 +72,7 @@ export function Topbar({ title }: { title: string }) {
               </a>
               <div className="my-1 border-t border-[#eee]" />
               <button
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={() => signOut({ callbackUrl: "/login" })}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-[0.8rem] text-[#ef8157] hover:bg-red-50 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">

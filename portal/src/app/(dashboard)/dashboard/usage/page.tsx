@@ -45,7 +45,7 @@ async function getUsageData(tenantId: string) {
 
 export default async function UsagePage() {
   const session = await getServerSession(authOptions) as any;
-  if (!session?.tenantId) redirect("/");
+  if (!session?.tenantId) redirect("/login");
 
   const { daily, topTools, totals } = await getUsageData(session.tenantId);
   const successRate = totals?.total ? Math.round((totals.successful / totals.total) * 100) : 100;

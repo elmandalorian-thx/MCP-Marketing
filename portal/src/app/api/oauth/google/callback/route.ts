@@ -42,16 +42,16 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(new URL("/connect?error=google_denied", request.url));
+    return NextResponse.redirect(new URL("/dashboard/connect?error=google_denied", request.url));
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(new URL("/connect?error=missing_params", request.url));
+    return NextResponse.redirect(new URL("/dashboard/connect?error=missing_params", request.url));
   }
 
   const parsed = parseOAuthState(state);
   if (!parsed) {
-    return NextResponse.redirect(new URL("/connect?error=invalid_state", request.url));
+    return NextResponse.redirect(new URL("/dashboard/connect?error=invalid_state", request.url));
   }
 
   try {
@@ -129,9 +129,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.redirect(new URL("/connect?success=google", request.url));
+    return NextResponse.redirect(new URL("/dashboard/connect?success=google", request.url));
   } catch (err) {
     console.error("Google OAuth callback error:", err);
-    return NextResponse.redirect(new URL("/connect?error=google_exchange", request.url));
+    return NextResponse.redirect(new URL("/dashboard/connect?error=google_exchange", request.url));
   }
 }

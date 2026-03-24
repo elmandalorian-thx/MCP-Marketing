@@ -43,7 +43,7 @@ async function getRecentActivity(tenantId: string) {
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions) as any;
-  if (!session?.tenantId) redirect("/");
+  if (!session?.tenantId) redirect("/login");
 
   const stats = await getStats(session.tenantId);
   const recent = await getRecentActivity(session.tenantId);

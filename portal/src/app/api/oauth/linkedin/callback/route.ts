@@ -19,12 +19,12 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get("state");
 
   if (!code || !state) {
-    return NextResponse.redirect(new URL("/connect?error=linkedin_denied", request.url));
+    return NextResponse.redirect(new URL("/dashboard/connect?error=linkedin_denied", request.url));
   }
 
   const parsed = parseOAuthState(state);
   if (!parsed) {
-    return NextResponse.redirect(new URL("/connect?error=invalid_state", request.url));
+    return NextResponse.redirect(new URL("/dashboard/connect?error=invalid_state", request.url));
   }
 
   try {
@@ -47,9 +47,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.redirect(new URL("/connect?success=linkedin", request.url));
+    return NextResponse.redirect(new URL("/dashboard/connect?success=linkedin", request.url));
   } catch (err) {
     console.error("LinkedIn OAuth callback error:", err);
-    return NextResponse.redirect(new URL("/connect?error=linkedin_exchange", request.url));
+    return NextResponse.redirect(new URL("/dashboard/connect?error=linkedin_exchange", request.url));
   }
 }

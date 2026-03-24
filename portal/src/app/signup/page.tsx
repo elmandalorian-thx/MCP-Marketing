@@ -158,7 +158,7 @@ function SignupForm() {
           <div className="mt-6 text-center">
             <span className="text-[0.8rem] text-[#9A9A9A]">
               Already have an account?{" "}
-              <Link href="/" className="text-[#51cbce] font-semibold hover:underline no-underline">
+              <Link href="/login" className="text-[#51cbce] font-semibold hover:underline no-underline">
                 Sign in
               </Link>
             </span>
