@@ -25,6 +25,12 @@ htmlcov/
 *.swp
 *.swo
 
+# Node / Next.js
+node_modules/
+.next/
+next-env.d.ts
+package-lock.json
+
 # OS
 .DS_Store
 Thumbs.db

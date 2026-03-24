@@ -2,12 +2,30 @@
 
 import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
+  const searchParams = useSearchParams();
+  const selectedPlan = searchParams.get("plan") || "free";
   const [form, setForm] = useState({ agencyName: "", name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Store selected plan in cookie for OAuth flow
+  useEffect(() => {
+    if (selectedPlan && selectedPlan !== "free") {
+      document.cookie = `selected_plan=${selectedPlan};path=/;max-age=3600`;
+    }
+  }, [selectedPlan]);
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));

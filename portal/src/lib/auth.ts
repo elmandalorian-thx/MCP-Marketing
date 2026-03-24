@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { users, tenants } from "./schema";
 import { eq } from "drizzle-orm";
+import { createAlert } from "./admin";
 
 /**
  * Find or create a user+tenant for OAuth sign-in.
@@ -42,6 +43,7 @@ async function findOrCreateOAuthUser(profile: { email: string; name?: string }) 
       tenantName: tenant?.name || "Agency",
       role: existing.role,
       planTier: tenant?.planTier || "free",
+      isNew: false,
     };
   }
 
@@ -73,6 +75,7 @@ async function findOrCreateOAuthUser(profile: { email: string; name?: string }) 
     tenantName: tenant.name,
     role: "owner",
     planTier: tenant.planTier,
+    isNew: true,
   };
 }
 
@@ -165,6 +168,16 @@ export const authOptions: NextAuthOptions = {
         (user as any).role = result.role;
         (user as any).planTier = result.planTier;
         (user as any).id = result.id;
+
+        if (result.isNew) {
+          createAlert({
+            tenantId: result.tenantId,
+            severity: "info",
+            type: "new_signup",
+            title: `New signup: ${email}`,
+            description: `${result.tenantName} (${email}) signed up via ${account?.provider}.`,
+          }).catch(() => {}); // fire and forget
+        }
       }
       return true;
     },
