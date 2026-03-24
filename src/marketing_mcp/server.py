@@ -53,13 +53,6 @@ import marketing_mcp.clients.hubspot  # noqa: E402, F401
 import marketing_mcp.prompts.tools  # noqa: E402, F401
 import marketing_mcp.prompts.mcp_prompts  # noqa: E402, F401
 
-# Register admin dashboard routes (available in HTTP mode)
-from marketing_mcp.admin.routes import register_admin_routes  # noqa: E402
-from marketing_mcp.homepage.routes import register_homepage_routes  # noqa: E402
-
-register_admin_routes(mcp)
-register_homepage_routes(mcp)
-
 
 def main() -> None:
     """Run the Marketing MCP server."""
@@ -88,38 +81,12 @@ def main() -> None:
     # Subcommand: setup
     subparsers.add_parser("setup", help="Interactive credential setup wizard")
 
-    # Subcommand: admin
-    admin_parser = subparsers.add_parser(
-        "admin", help="Launch admin dashboard web UI"
-    )
-    admin_parser.add_argument(
-        "--port",
-        type=int,
-        default=8001,
-        help="Port for admin dashboard (default: 8001)",
-    )
-    admin_parser.add_argument(
-        "--host",
-        default="127.0.0.1",
-        help="Host for admin dashboard (default: 127.0.0.1)",
-    )
-
     args = parser.parse_args()
 
     if args.command == "setup":
         from marketing_mcp.cli_setup import run_setup
 
         run_setup()
-        return
-
-    if args.command == "admin":
-        import uvicorn
-
-        from marketing_mcp.admin.routes import create_admin_app
-
-        app = create_admin_app()
-        print(f"Admin dashboard: http://{args.host}:{args.port}/admin")
-        uvicorn.run(app, host=args.host, port=args.port, log_level="info")
         return
 
     # Default: run MCP server
